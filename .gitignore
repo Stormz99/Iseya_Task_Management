@@ -1,0 +1,42 @@
+# Byte-compiled / cached files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment files
+.env
+.env.*
+
+# pipenv and poetry
+Pipfile
+Pipfile.lock
+poetry.lock
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# PostgreSQL Docker Volumes (if using Docker)
+pgdata/
+
+# Logs
+logs/
+*.log
+
+# Docker-related files
+docker-compose.override.yml
+
+# Alembic migrations
+migrations/
+alembic.ini
+
+# Uvicorn/Gunicorn logs
+*.pid

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: iseya-task-management
+  labels:
+    app: iseya-task-management
+spec:
+  selector:
+    app: iseya-task-management
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iseya-task-management
+  labels:
+    app: iseya-task-management
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: iseya-task-management
+  template:
+    metadata:
+      labels:
+        app: iseya-task-management
+    spec:
+      containers:
+        - name: iseya-task-management
+          image: gcr.io/PROJECT_ID/iseya-task-management:VERSION
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: database-url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: secret-key
+            - name: ACCESS_TOKEN
+              value: "30"
+            - name: ALGORITHM
+              value: "HS256"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
