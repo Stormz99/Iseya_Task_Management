@@ -1,42 +1,57 @@
-# Byte-compiled / cached files
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-
-# Virtual environments
-venv/
-.venv/
+.Python
 env/
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.sqlite3
+*.db
 
-# Environment files
+# VS Code
+.vscode/
+
+# Environment variables
 .env
 .env.*
 
-# pipenv and poetry
-Pipfile
-Pipfile.lock
-poetry.lock
+# Docker
+docker-compose.override.yml
+.docker/
 
-# macOS
+# Alembic
+alembic/versions/*.pyc
+
+# Mac OS files
 .DS_Store
 
-# Windows
-Thumbs.db
-
-# PostgreSQL Docker Volumes (if using Docker)
-pgdata/
+# Kubernetes files
+*.yaml~
 
 # Logs
-logs/
 *.log
 
-# Docker-related files
-docker-compose.override.yml
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
 
-# Alembic migrations
-migrations/
-alembic.ini
+# pytest
+.pytest_cache/
 
-# Uvicorn/Gunicorn logs
-*.pid
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pydantic
+*.json
+
+# Others
+.idea/
+*.swp
