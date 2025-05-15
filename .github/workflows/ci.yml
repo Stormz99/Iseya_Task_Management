@@ -57,14 +57,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-reports
-          path: dependency-check/reports/
+          path: dependency-check/dependency-check/report/
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v1
         with:
           projectBaseDir: '.'
-          args: >
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
       - name: Snyk Scan
         uses: snyk/actions/python@master
@@ -73,3 +74,5 @@ jobs:
 
       - name: TruffleHog Scan
         uses: trufflesecurity/trufflehog@main
+        with:
+          scanArguments: '--regex --entropy=True --branch=main'
