@@ -1,37 +1,36 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bullseye
 
-# Set environment variables to prevent Python from writing .pyc and buffering logs
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+# Prevent .pyc files and enable unbuffered output
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
-# Install system dependencies
+# Install dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user
+# Create app user
 RUN useradd --create-home appuser
 
-# Set the working directory inside the container
+# Set workdir and permissions
 WORKDIR /app
-
-# Switch to the non-root user
-USER appuser
-
-# Copy only necessary files (minimizing build context size)
 COPY --chown=appuser:appuser requirements.txt ./
 
-# Install Python dependencies
+# Install Python packages
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire project
+# Copy code
 COPY --chown=appuser:appuser . .
 
-# Expose the FastAPI default port
+# Switch to non-root
+USER appuser
+
+# Expose FastAPI port
 EXPOSE 8000
 
-# Running the application
+# Start the app
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
