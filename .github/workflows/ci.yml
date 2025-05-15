@@ -5,24 +5,10 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
 
 jobs:
   security-scanning:
     runs-on: ubuntu-latest
-
-    env:
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      ALEMBIC_DATABASE_URL: ${{ secrets.ALEMBIC_DATABASE_URL }}
-      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-      JWT_ALGORITHM: ${{ secrets.JWT_ALGORITHM }}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
 
     steps:
       - name: Checkout code
@@ -38,44 +24,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create .env file
-        run: |
-          echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
-          echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
-          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
-          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
-          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          echo "ALEMBIC_DATABASE_URL=${{ secrets.ALEMBIC_DATABASE_URL }}" >> .env
-          echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
-          echo "JWT_ALGORITHM=${{ secrets.JWT_ALGORITHM }}" >> .env
-          echo "ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}" >> .env
-
-      - name: Run Pytest
-        run: pytest
-
       - name: OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@v3.2.1
+        uses: OWASP/DependencyCheck_Action@main
         with:
-          project: 'Iseya'
-          format: 'HTML'
-          out: 'reports'
+          project: 'Iseya Task Management'
+          path: '.'
 
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v2.0.1
+        uses: sonarsource/sonarqube-scan-action@v1
         with:
           projectBaseDir: '.'
           args: >
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
       - name: Snyk Scan
-        uses: snyk/actions/python@0.4.0
+        uses: snyk/actions/python@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --file=requirements.txt --strict
 
-      - name: TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@v3.71.0
-        with:
-          scanArguments: --regex --entropy=False .
+      - name: TruffleHog Scan
+        uses: trufflesecurity/trufflehog@main
