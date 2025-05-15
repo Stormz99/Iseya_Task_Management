@@ -24,11 +24,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: OWASP Dependency-Check
-        uses: OWASP/DependencyCheck_Action@main
-        with:
-          project: 'Iseya Task Management'
-          path: '.'
+      - name: Run OWASP Dependency Check
+        run: |
+          mkdir -p dependency-check
+          curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dc.zip
+          unzip dc.zip -d dependency-check
+          ./dependency-check/bin/dependency-check.sh --project "Iseya Task Management" --scan . --format "ALL"
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v1
