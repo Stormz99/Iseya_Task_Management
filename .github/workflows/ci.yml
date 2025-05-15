@@ -66,9 +66,9 @@ jobs:
           path: dependency-check/dependency-check/report/
 
       - name: Setup Snyk CLI
-        uses: snyk/actions/setup@v1
+        uses: snyk/actions/setup@v3
         with:
-          version: latest
+          version: 'latest'
 
       - name: Run Snyk test
         env:
@@ -79,8 +79,6 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           scanArguments: '--regex --entropy=True --branch=main'
-
-      # --- SonarScanner Setup and Scan ---
 
       - name: Set up Java 17
         uses: actions/setup-java@v3
