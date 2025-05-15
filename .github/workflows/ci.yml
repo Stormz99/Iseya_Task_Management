@@ -117,10 +117,8 @@ jobs:
         uses: SonarSource/sonarcloud-github-action@v2
         with:
           projectBaseDir: .
-          args: >
-            -Dsonar.projectKey=iseya
-            -Dsonar.organization=iseya
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
-            -Dsonar.host.url=https://sonarcloud.io
+          projectKey: iseya_dashboard
+          organization: iseya
+          token: ${{ secrets.SONAR_TOKEN }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
