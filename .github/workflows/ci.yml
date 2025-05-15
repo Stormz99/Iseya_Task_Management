@@ -73,12 +73,11 @@ jobs:
       - name: Install Snyk CLI
         run: npm install -g snyk
 
-      - name: Authenticate Snyk CLI
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk auth $SNYK_TOKEN
+      # Removed snyk auth step - token passed as env in next step
 
       - name: Run Snyk test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk test --all-projects --fail-on=all
 
       - name: TruffleHog Scan
@@ -105,7 +104,7 @@ jobs:
         run: |
           sonar-scanner \
             -Dsonar.projectKey=Iseya_Task_Management \
-            -Dsonar.organization=Iseya \
+            -Dsonar.organization=iseya \
             -Dsonar.sources=. \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN
