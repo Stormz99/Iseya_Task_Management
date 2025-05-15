@@ -105,6 +105,8 @@ jobs:
         run: |
           echo "Java version:"
           java -version
+          export JAVA_HOME=$JAVA_HOME_17_X64
+          export PATH=$JAVA_HOME/bin:$PATH
           sonar-scanner \
             -Dsonar.projectKey=IseyaTaskManagement \
             -Dsonar.sources=. \
