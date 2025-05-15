@@ -65,7 +65,7 @@ jobs:
           name: dependency-check-reports
           path: dependency-check/dependency-check/report/
 
-      - name: Setup Node.js (required for Snyk CLI)
+      - name: Setup Node.js (for Snyk)
         uses: actions/setup-node@v3
         with:
           node-version: '18'
@@ -101,12 +101,11 @@ jobs:
       - name: Run SonarScanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # It's simpler to hardcode this below, or set it as a secret with value https://sonarcloud.io
           SONAR_HOST_URL: https://sonarcloud.io
         run: |
           sonar-scanner \
-            -Dsonar.projectKey=IseyaTaskManagement \
-            -Dsonar.organization=stormz99 \
+            -Dsonar.projectKey=Iseya_Task_Management \
+            -Dsonar.organization=Iseya \
             -Dsonar.sources=. \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN
