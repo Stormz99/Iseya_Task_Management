@@ -65,20 +65,6 @@ jobs:
           name: dependency-check-reports
           path: dependency-check/dependency-check/report/
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v1
-        with:
-          projectBaseDir: '.'
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
       - name: Snyk Scan
         uses: snyk/actions/python@master
         env:
@@ -88,3 +74,28 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           scanArguments: '--regex --entropy=True --branch=main'
+
+      # --- SonarScanner Setup and Scan ---
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Download SonarScanner CLI
+        run: |
+          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+          unzip sonar-scanner.zip
+          echo "$(pwd)/sonar-scanner-4.8.0.2856-linux/bin" >> $GITHUB_PATH
+
+      - name: Run SonarQube Scanner
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=IseyaTaskManagement \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.login=$SONAR_TOKEN
