@@ -54,7 +54,7 @@ jobs:
             --format "ALL"
 
       - name: Upload Dependency Check reports
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@c84bfc6b2b926d8b838b5800c54a7bd04f5cc4c8
         with:
           name: dependency-check-reports
           path: dependency-check/reports/
