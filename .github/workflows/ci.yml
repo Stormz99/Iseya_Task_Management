@@ -96,16 +96,17 @@ jobs:
         run: |
           curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
           unzip sonar-scanner.zip -d $HOME/.sonar
-          export PATH="$HOME/.sonar/sonar-scanner-5.0.1.3006-linux/bin:$PATH"
           echo "$HOME/.sonar/sonar-scanner-5.0.1.3006-linux/bin" >> $GITHUB_PATH
 
       - name: Run SonarScanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          # It's simpler to hardcode this below, or set it as a secret with value https://sonarcloud.io
+          SONAR_HOST_URL: https://sonarcloud.io
         run: |
           sonar-scanner \
             -Dsonar.projectKey=IseyaTaskManagement \
+            -Dsonar.organization=stormz99 \
             -Dsonar.sources=. \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN
