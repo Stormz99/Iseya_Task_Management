@@ -32,6 +32,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Setup .NET 6 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+
       - name: Cache OWASP Dependency Check
         uses: actions/cache@v3
         with:
@@ -51,7 +56,8 @@ jobs:
           ./dependency-check/dependency-check/bin/dependency-check.sh \
             --project "Iseya Task Management" \
             --scan . \
-            --format "ALL"
+            --format "ALL" \
+            --out dependency-check/dependency-check/report
 
       - name: Upload Dependency Check reports
         uses: actions/upload-artifact@v4
