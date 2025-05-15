@@ -65,9 +65,9 @@ jobs:
           name: dependency-check-reports
           path: dependency-check/dependency-check/report/
 
-      # Corrected Snyk setup action here
+      # Corrected Snyk setup and test steps
       - name: Set up Snyk CLI
-        uses: snyk/actions/setup@v3
+        uses: snyk/actions/setup@v1
         with:
           version: 'latest'
 
