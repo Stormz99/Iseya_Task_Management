@@ -87,24 +87,18 @@ jobs:
           scanArguments: '--regex --entropy=True --branch=main'
 
       - name: Set up Java 17
-        id: setup-java
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Download SonarScanner CLI
-        run: |
-          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-          unzip sonar-scanner.zip
-          echo "$(pwd)/sonar-scanner-4.8.0.2856-linux/bin" >> $GITHUB_PATH
+      - name: Set up SonarScanner
+        uses: SonarSource/sonarcloud-github-action@v2
 
       - name: Run SonarQube Scanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          JAVA_HOME: ${{ steps.setup-java.outputs.path }}
-          PATH: ${{ steps.setup-java.outputs.path }}/bin:${{ env.PATH }}
         run: |
           echo "Java version:"
           java -version
