@@ -65,16 +65,15 @@ jobs:
           name: dependency-check-reports
           path: dependency-check/dependency-check/report/
 
-      - name: Snyk Setup
+      - name: Setup Snyk CLI
         uses: snyk/actions/setup@v1
         with:
           version: latest
 
-      - name: Snyk Scan
+      - name: Run Snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          snyk test --file=requirements.txt --package-manager=pip
+        run: snyk test --file=requirements.txt --package-manager=pip --fail-on=all
 
       - name: TruffleHog Scan
         uses: trufflesecurity/trufflehog@main
