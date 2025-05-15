@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache pip dependencies
+      - name: Cache Python packages
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
@@ -32,40 +32,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Cache Dependency Check CLI
-        id: dc-cache
+      - name: Cache OWASP Dependency Check
         uses: actions/cache@v3
         with:
           path: dependency-check
-          key: dependency-check-v8.4.0
-
-      - name: Download and prepare OWASP Dependency Check CLI
-        if: steps.dc-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p dependency-check
-          curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dc.zip
-          unzip dc.zip -d dependency-check
-          chmod +x dependency-check/dependency-check/bin/dependency-check.sh
+          key: ${{ runner.os }}-dependency-check-v8.4.0
+          restore-keys: |
+            ${{ runner.os }}-dependency-check-
 
       - name: Run OWASP Dependency Check
         run: |
+          mkdir -p dependency-check
+          if [ ! -d "dependency-check/dependency-check" ]; then
+            curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dc.zip
+            unzip dc.zip -d dependency-check
+            chmod +x dependency-check/dependency-check/bin/dependency-check.sh
+          fi
           ./dependency-check/dependency-check/bin/dependency-check.sh \
             --project "Iseya Task Management" \
             --scan . \
-            --format "ALL" \
-            --out dependency-check/reports
+            --format "ALL"
 
       - name: Upload Dependency Check reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: dependency-check-reports
           path: dependency-check/reports/
-
-      - name: Cache SonarQube Scanner
-        uses: actions/cache@v3
-        with:
-          path: .sonar/cache
-          key: ${{ runner.os }}-sonar
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v1
@@ -80,7 +72,4 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: TruffleHog Scan
-        uses: trufflesecurity/trufflehog@v3
-        with:
-          scan_path: .
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        uses: trufflesecurity/trufflehog@main
