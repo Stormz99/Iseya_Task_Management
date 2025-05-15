@@ -65,12 +65,10 @@ jobs:
           name: dependency-check-reports
           path: dependency-check/dependency-check/report/
 
-      # --- FIXED Snyk steps below ---
-
       - name: Setup Node.js (required for Snyk CLI)
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # recommended stable version
+          node-version: '18'
 
       - name: Install Snyk CLI
         run: npm install -g snyk
@@ -105,6 +103,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
+          echo "Java version before setting JAVA_HOME:"
+          java -version
+          export JAVA_HOME=$JAVA_HOME_17_X64
+          export PATH=$JAVA_HOME/bin:$PATH
+          echo "Java version after setting JAVA_HOME:"
+          java -version
           sonar-scanner \
             -Dsonar.projectKey=IseyaTaskManagement \
             -Dsonar.sources=. \
