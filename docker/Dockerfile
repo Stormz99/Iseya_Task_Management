@@ -1,4 +1,4 @@
-FROM python:3.13.2-slim
+FROM python:3.14-rc-slim-bookworm
 
 # Set environment variables to prevent Python from writing .pyc and buffering logs
 ENV PYTHONUNBUFFERED=1
