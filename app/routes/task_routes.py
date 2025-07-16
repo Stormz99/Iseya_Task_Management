@@ -12,9 +12,8 @@ from app.services.task_service import (
 )
 from app.models.enum import RoleEnum
 
-
+# We don't need to specify prefix in the decorator since it's set in main.py
 task_router = APIRouter(tags=["Tasks"])
-
 
 # CREATE TASK (Authenticated User)
 @task_router.post("/", response_model=TaskResponse)
@@ -24,7 +23,6 @@ async def create_new_task(
     current_user: dict = Depends(get_current_user)
 ):
     return await create_task(request, db, current_user["id"])
-
 
 # RETRIEVE ALL TASKS (Admin Only)
 @task_router.get("/", response_model=list[TaskResponse])
@@ -37,7 +35,6 @@ async def retrieve_all_tasks(
 
     return await get_all_tasks(db)
 
-
 # RETRIEVE ONLY USER'S OWN TASKS (Authenticated User)
 @task_router.get("/user-tasks", response_model=list[TaskResponse])
 async def retrieve_user_tasks(
@@ -47,7 +44,6 @@ async def retrieve_user_tasks(
     tasks = await get_all_tasks(db)  # Fetch all tasks
     user_tasks = [task for task in tasks if task.owner_id == current_user["id"]]
     return user_tasks
-
 
 # RETRIEVE SINGLE TASK (Owner or Admin)
 @task_router.get("/{task_id}", response_model=TaskResponse)
@@ -66,7 +62,6 @@ async def retrieve_task_by_id(
 
     return task
 
-
 # UPDATE TASK (Owner or Admin)
 @task_router.put("/{task_id}", response_model=TaskResponse)
 async def update_task_by_id(
@@ -84,7 +79,6 @@ async def update_task_by_id(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return await update_task(task_id, request, db)
-
 
 # DELETE TASK (Owner or Admin)
 @task_router.delete("/{task_id}")
