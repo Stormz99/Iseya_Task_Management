@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: iseya-task-management
-          image: gcr.io/PROJECT_ID/iseya-task-management:VERSION
+          image: gcr.io/balmy-elf-458808-p3/iseya-task-management:latest
           ports:
             - containerPort: 8000
           resources:
@@ -32,27 +32,31 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: database-url
-            - name: SECRET_KEY
+            - name: JWT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: app-secrets
                   key: secret-key
-            - name: ACCESS_TOKEN
+            - name: ACCESS_TOKEN_EXPIRE_MINUTES
               value: "30"
-            - name: ALGORITHM
+            - name: JWT_ALGORITHM
               value: "HS256"
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 30
+            initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
