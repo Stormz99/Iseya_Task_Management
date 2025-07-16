@@ -13,7 +13,7 @@ from app.services.task_service import (
 from app.models.enum import RoleEnum
 
 # We don't need to specify prefix in the decorator since it's set in main.py
-task_router = APIRouter(tags=["Tasks"])
+task_router = APIRouter()
 
 # CREATE TASK (Authenticated User)
 @task_router.post("/", response_model=TaskResponse)
