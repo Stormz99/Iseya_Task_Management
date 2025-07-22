@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: iseya-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+    nginx.ingress.kubernetes.io/rerite-target: /
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+      - iseya.duckdns.org
+      secretName: iseya-tls
+  rules:
+    - host: iseya.duckdns.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: iseya-task-management
+                port:
+                  number: 80
