@@ -3,7 +3,6 @@ kind: Service
 metadata:
   name: iseya-task-management
 spec:
-  type: LoadBalancer
   selector:
     app: iseya-task-management
   ports:
