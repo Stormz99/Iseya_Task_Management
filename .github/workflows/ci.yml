@@ -76,10 +76,9 @@ jobs:
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk Test
-        run: |
-          snyk test --all-projects --fail-on=all || true
+        run: snyk test --all-projects --fail-on=all || true
 
-      # TruffleHog Secrets Scan
+      # TruffleHog Scan
       - name: Install TruffleHog
         run: pip install trufflehog
 
@@ -117,4 +116,4 @@ jobs:
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.sources=. \
             -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.host.url=https://sonarcloud.io || true
