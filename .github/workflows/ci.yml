@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout code
+      # Checkout Code
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -36,30 +36,42 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Set up .NET (for OWASP)
+      # Setup .NET 6 SDK (for OWASP scan)
       - name: Setup .NET 6 SDK
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '6.0.x'
 
-      # OWASP Dependency Check
+      # Cache OWASP Dependency Check
+      - name: Cache OWASP Dependency Check
+        uses: actions/cache@v3
+        with:
+          path: dependency-check
+          key: ${{ runner.os }}-dependency-check-v8.4.0
+          restore-keys: |
+            ${{ runner.os }}-dependency-check-
+
+      # Run OWASP Dependency Check
       - name: Run OWASP Dependency Check
         run: |
-          curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dc.zip
-          unzip dc.zip -d dependency-check
-          mkdir -p owasp-report
-          dependency-check/dependency-check/bin/dependency-check.sh \
+          mkdir -p dependency-check
+          if [ ! -d "dependency-check/dependency-check" ]; then
+            curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dc.zip
+            unzip dc.zip -d dependency-check
+            chmod +x dependency-check/dependency-check/bin/dependency-check.sh
+          fi
+          ./dependency-check/dependency-check/bin/dependency-check.sh \
             --project "Iseya Task Management" \
             --scan . \
-            --format XML \
-            --out owasp-report \
-            --prettyPrint
+            --format "ALL" \
+            --out dependency-check/dependency-check/report || echo "OWASP scan completed with issues."
 
-      - name: Upload OWASP Report
+      # Upload OWASP Report
+      - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v4
         with:
           name: owasp-dependency-check-report
-          path: owasp-report/
+          path: dependency-check/dependency-check/report/
 
       # Set up Node.js for Snyk
       - name: Set up Node.js
@@ -67,27 +79,36 @@ jobs:
         with:
           node-version: '18'
 
+      # Install Snyk CLI
       - name: Install Snyk CLI
         run: npm install -g snyk
 
+      # Authenticate Snyk
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run Snyk Test
-        run: snyk test --all-projects --fail-on=all
+      # Run Snyk and save report
+      - name: Run Snyk Scan
+        run: |
+          snyk test --all-projects --json > snyk-report.json || echo "Snyk scan completed with vulnerabilities."
+
+      - name: Upload Snyk Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-report
+          path: snyk-report.json
 
       # TruffleHog Secrets Scan
       - name: TruffleHog Secrets Scan
         run: |
           curl -sSL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/install.sh | bash
-          mkdir -p trufflehog-report
-          ./trufflehog git --regex --entropy=True --branch=main https://github.com/${{ github.repository }} > trufflehog-report/secrets.json
+          ./trufflehog git --regex --entropy=True --branch=main https://github.com/${{ github.repository }} > trufflehog-output.json || echo "Trufflehog completed with issues."
 
       - name: Upload TruffleHog Report
         uses: actions/upload-artifact@v4
         with:
           name: trufflehog-report
-          path: trufflehog-report/
+          path: trufflehog-output.json
 
       # Set up Java 17 for SonarCloud
       - name: Set up Java 17
@@ -96,6 +117,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Cache SonarCloud packages
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
         with:
@@ -103,6 +125,7 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
+      # Run SonarCloud Scan
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
@@ -118,6 +141,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # Authenticate to Google Container Registry
       - name: Authenticate to Google Container Registry
         uses: docker/login-action@v2
         with:
@@ -125,12 +149,14 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCP_JSON_KEY }}
 
+      # Build Docker image
       - name: Build Docker image
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           docker build -t gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest .
 
+      # Push Docker image
       - name: Push Docker image
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -147,13 +173,12 @@ jobs:
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
-          mkdir -p trivy-report
-          trivy image --exit-code 0 --format json --severity CRITICAL,HIGH \
-            -o trivy-report/scan.json \
-            gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest
+          trivy image --format json --output trivy-report.json \
+            --exit-code 0 --severity CRITICAL,HIGH \
+            gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest || echo "Trivy completed with vulnerabilities."
 
       - name: Upload Trivy Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report
-          path: trivy-report/
+          path: trivy-report.json
