@@ -36,7 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Setup .NET 6 SDK
+      # Setup .NET 6 SDK (for OWASP scan)
       - name: Setup .NET 6 SDK
         uses: actions/setup-dotnet@v3
         with:
@@ -91,11 +91,11 @@ jobs:
       - name: Run Snyk Test
         run: snyk test --all-projects --fail-on=all
 
-      # TruffleHog Scan
+      # TruffleHog Secrets Scan
       - name: TruffleHog Secrets Scan
-        uses: trufflesecurity/trufflehog@main
-        with:
-          args: '--regex --entropy=True --branch=main'
+        run: |
+          curl -sSL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/install.sh | bash
+          ./trufflehog git --regex --entropy=True --branch=main https://github.com/${{ github.repository }}
 
       # Set up Java 17 for SonarCloud
       - name: Set up Java 17
@@ -123,3 +123,41 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Authenticate to Google Container Registry
+      - name: Authenticate to Google Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: gcr.io
+          username: _json_key
+          password: ${{ secrets.GCP_JSON_KEY }}
+
+      # Build Docker image
+      - name: Build Docker image
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          docker build -t gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest .
+
+      # Push Docker image
+      - name: Push Docker image
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          docker push gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest
+
+      # Install Trivy CLI
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      # Trivy Vulnerability Scan
+      - name: Trivy Vulnerability Scan
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          trivy image --exit-code 1 --severity CRITICAL,HIGH gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest

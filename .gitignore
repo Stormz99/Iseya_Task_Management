@@ -55,3 +55,6 @@ dmypy.json
 # Others
 .idea/
 *.swp
+
+#GCP Credentials
+balmy-elf-458808-p3-0af3cd9b3385.json
