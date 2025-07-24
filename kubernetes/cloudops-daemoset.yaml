@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cloud-ops-agent
+  labels:
+    app: cloud-ops-agent
+spec:
+  selector:
+    matchLabels:
+      app: cloud-ops-agent
+  template:
+    metadata:
+      labels:
+        app: cloud-ops-agent
+    spec:
+      containers:
+        - name: cloud-ops-agent
+          image: gcr.io/balmy-elf-458808-p3/iseya-task-management:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: database-url
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: secret-key
+            - name: ACCESS_TOKEN_EXPIRE_MINUTES
+              value: "30"
+            - name: JWT_ALGORITHM
+              value: "HS256"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
