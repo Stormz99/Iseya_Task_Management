@@ -1,0 +1,75 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged-containers
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-privileged-containers
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Privileged containers are not allowed."
+        foreach:
+          - list: "request.object.spec.containers[]"
+            deny:
+              conditions:
+                - key: "{{ element.securityContext.privileged }}"
+                  operator: Equals
+                  value: true
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-default-namespace
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-namespace-not-default
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Using the default namespace is not allowed."
+        deny:
+          conditions:
+            - key: "{{ request.object.metadata.namespace }}"
+              operator: Equals
+              value: default
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resources-on-containers
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-resources-containers
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "CPU and memory resource requests and limits are required."
+        foreach:
+          - list: "request.object.spec.containers[]"
+            deny:
+              conditions:
+                - key: "{{ element.resources.requests.cpu }}"
+                  operator: Equals
+                  value: null
+                - key: "{{ element.resources.requests.memory }}"
+                  operator: Equals
+                  value: null
+                - key: "{{ element.resources.limits.cpu }}"
+                  operator: Equals
+                  value: null
+                - key: "{{ element.resources.limits.memory }}"
+                  operator: Equals
+                  value: null
