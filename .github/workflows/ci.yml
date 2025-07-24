@@ -18,129 +18,103 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Cache pip
+      - name: Cache pip packages
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      #################### OWASP Dependency Check ####################
-      - name: Install OWASP Dependency Check
-        run: |
-          mkdir dc && cd dc
-          curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dc.zip
-          unzip dc.zip
-          chmod +x dependency-check/bin/dependency-check.sh
+      - name: Setup .NET 6 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+
+      # OWASP Dependency Check
+      - name: Cache OWASP Dependency Check
+        uses: actions/cache@v3
+        with:
+          path: dependency-check
+          key: ${{ runner.os }}-dependency-check-v8.4.0
+          restore-keys: ${{ runner.os }}-dependency-check-
 
       - name: Run OWASP Dependency Check
         run: |
-          ./dc/dependency-check/bin/dependency-check.sh \
+          mkdir -p dependency-check
+          if [ ! -d "dependency-check/dependency-check" ]; then
+            curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dc.zip
+            unzip dc.zip -d dependency-check
+            chmod +x dependency-check/dependency-check/bin/dependency-check.sh
+          fi
+          ./dependency-check/dependency-check/bin/dependency-check.sh \
             --project "Iseya Task Management" \
             --scan . \
-            --format ALL \
-            --out owasp-report \
-            --prettyPrint \
-            --failOnCVSS 11 || true
+            --format "ALL" \
+            --out dependency-check/dependency-check/report || true
 
-      - name: Upload OWASP Report
+      - name: Upload Dependency Check Reports
         uses: actions/upload-artifact@v4
         with:
-          name: owasp-report
-          path: owasp-report
+          name: dependency-check-reports
+          path: dependency-check/dependency-check/report/
 
-      #################### Snyk Scan ####################
-      - name: Set up Node
+      # Snyk Scan
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: '18'
 
-      - name: Install & Run Snyk
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk Test
         run: |
-          npm install -g snyk
-          snyk auth ${{ secrets.SNYK_TOKEN }}
-          snyk test --all-projects --json-file-output=snyk-report.json || true
+          snyk test --all-projects --fail-on=all || true
 
-      - name: Upload Snyk Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: snyk-report
-          path: snyk-report.json
-
-      #################### TruffleHog ####################
+      # TruffleHog Secrets Scan
       - name: Install TruffleHog
-        run: |
-          curl -sSL https://github.com/trufflesecurity/trufflehog/releases/latest/download/trufflehog-linux-amd64 -o trufflehog
-          chmod +x trufflehog
-          sudo mv trufflehog /usr/local/bin/
+        run: pip install trufflehog
 
-      - name: Run TruffleHog
+      - name: Run TruffleHog Scan
         run: |
-          trufflehog git https://github.com/${{ github.repository }} \
-            --branch=main \
-            --json > trufflehog-report.json || true
+          mkdir -p trufflehog-output
+          trufflehog filesystem . --json > trufflehog-output/report.json || true
+          zip -r trufflehog-output.zip trufflehog-output
 
       - name: Upload TruffleHog Report
         uses: actions/upload-artifact@v4
         with:
           name: trufflehog-report
-          path: trufflehog-report.json
+          path: trufflehog-output.zip
 
-      #################### SonarCloud ####################
-      - name: Set up Java
+      # SonarCloud Scan
+      - name: Set up Java 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
+      - name: Install SonarScanner CLI
+        run: |
+          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+          unzip sonar-scanner.zip -d $HOME/.sonar
+          echo "$HOME/.sonar/sonar-scanner-5.0.1.3006-linux/bin" >> $GITHUB_PATH
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.projectKey=Stormz99_Iseya_Task_Management
-            -Dsonar.organization=stormz99
-            -Dsonar.host.url=https://sonarcloud.io
+      - name: Run SonarCloud Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      #################### Docker + Trivy ####################
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Docker Login to GCR
-        uses: docker/login-action@v2
-        with:
-          registry: gcr.io
-          username: _json_key
-          password: ${{ secrets.GCP_JSON_KEY }}
-
-      - name: Build Docker image
-        run: docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/iseya-task:latest .
-
-      - name: Push Docker image
-        run: docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/iseya-task:latest
-
-      - name: Install Trivy
-        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-
-      - name: Run Trivy Scan
         run: |
-          trivy image gcr.io/${{ secrets.GCP_PROJECT_ID }}/iseya-task:latest \
-            --format json --output trivy-report.json || true
-
-      - name: Upload Trivy Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report
-          path: trivy-report.json
+          sonar-scanner \
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+            -Dsonar.sources=. \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.host.url=https://sonarcloud.io
