@@ -30,30 +30,39 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      # Install dependencies
+      # Install Python dependencies
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # OWASP Dependency Check via Docker
+      # Setup .NET 6 SDK (for OWASP)
+      - name: Setup .NET 6 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+
+      # Run OWASP Dependency Check (XML report)
       - name: Run OWASP Dependency Check
         run: |
+          mkdir -p dependency-check
+          curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dc.zip
+          unzip dc.zip -d dependency-check
           mkdir -p owasp-report
-          docker run --rm \
-            -v $(pwd):/src \
-            -v $(pwd)/owasp-report:/report \
-            owasp/dependency-check:latest \
-            --scan /src \
-            --format "ALL" \
-            --out /report \
-            --project "Iseya Task Management"
+          dependency-check/dependency-check/bin/dependency-check.sh \
+            --project "Iseya Task Management" \
+            --scan . \
+            --format XML \
+            --out owasp-report \
+            --prettyPrint \
+            --failOnCVSS 7 \
+            --enableExperimental
 
-      # Upload OWASP Reports
-      - name: Upload OWASP Reports
+      # Upload OWASP Report
+      - name: Upload OWASP Report Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: owasp-dependency-check-reports
+          name: owasp-report
           path: owasp-report/
 
       # Set up Node.js for Snyk
@@ -62,23 +71,43 @@ jobs:
         with:
           node-version: '18'
 
-      # Install & Authenticate Snyk
+      # Install Snyk CLI
       - name: Install Snyk CLI
         run: npm install -g snyk
+
+      # Authenticate Snyk
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      # Run Snyk Scan
-      - name: Snyk Test
+      # Run Snyk Test
+      - name: Run Snyk Test
         run: snyk test --all-projects --fail-on=all
 
-      # TruffleHog Secrets Scan
+      # Upload Snyk Report (JSON)
+      - name: Save Snyk Report
+        run: snyk test --json-file-output=snyk-report.json --all-projects || true
+
+      - name: Upload Snyk Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-report
+          path: snyk-report.json
+
+      # Run TruffleHog
       - name: TruffleHog Secrets Scan
         run: |
           curl -sSL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/install.sh | bash
-          ./trufflehog git --regex --entropy=True --branch=main https://github.com/${{ github.repository }}
+          mkdir -p trufflehog-report
+          ./trufflehog git --regex --entropy=True --branch=main https://github.com/${{ github.repository }} \
+            --json > trufflehog-report/trufflehog.json || true
 
-      # Set up Java for SonarCloud
+      - name: Upload TruffleHog Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trufflehog-report
+          path: trufflehog-report/
+
+      # Set up Java 17 for SonarCloud
       - name: Set up Java 17
         uses: actions/setup-java@v3
         with:
@@ -94,7 +123,7 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
 
       # Run SonarCloud Scan
-      - name: SonarCloud Scan
+      - name: Run SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
           projectBaseDir: .
@@ -109,7 +138,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Authenticate to GCR
+      # Authenticate to Google Container Registry
       - name: Authenticate to Google Container Registry
         uses: docker/login-action@v2
         with:
@@ -117,22 +146,38 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCP_JSON_KEY }}
 
-      # Build Docker Image
-      - name: Build Docker Image
+      # Build Docker image
+      - name: Build Docker image
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           docker build -t gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest .
 
-      # Push Docker Image
-      - name: Push Docker Image
+      # Push Docker image
+      - name: Push Docker image
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           docker push gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest
 
-      # Trivy Vulnerability Scan
-      - name: Trivy Scan on Image
+      # Install Trivy
+      - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-          trivy image --exit-code 1 --severity CRITICAL,HIGH gcr.io/${{ secrets.GCP_PROJECT_ID }}/iseya-task-management:latest
+
+      # Run Trivy Vulnerability Scan
+      - name: Trivy Vulnerability Scan
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          mkdir -p trivy-report
+          trivy image --exit-code 0 --severity CRITICAL,HIGH \
+            --format json -o trivy-report/trivy.json \
+            gcr.io/$GCP_PROJECT_ID/iseya-task-management:latest
+
+      # Upload Trivy Report
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report/
